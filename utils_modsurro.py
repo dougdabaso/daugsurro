@@ -44,10 +44,12 @@ FOLDER_CONFIG = "config"
 with open(os.path.join(FOLDER_CONFIG, "config.json"), "r", encoding="utf-8") as f:
     dict_config = json.load(f)
 
+
+
 MIN_NUM_TUPLES = int(dict_config["general_params"]["min_num_tuples"])
 EPS_TO_HALT_MAG_COH_COMP = float(dict_config["general_params"]["eps_to_halt_mag_coh_comp"])
-
-
+N_POINTS_MAG_COH_CONV_HAT = int(dict_config["general_params"]["n_points_mag_coh_conv_hat"])
+MAX_COH_CURVES = int(dict_config["general_params"]["max_coh_curves"])
 
 
 class SignalAugmenters:
@@ -654,7 +656,7 @@ def computing_coherence(number_of_coh_spec_to_compute, signals_to_augment, fs, f
       i_current = matching_tuple[0]
       j_current = matching_tuple[1]
 
-      # breakpoint()
+      
 
       if i_tuple > 0:
          previous_mag_coh = current_mag_coh.copy()
@@ -680,8 +682,17 @@ def computing_coherence(number_of_coh_spec_to_compute, signals_to_augment, fs, f
 
       if i_tuple > MIN_NUM_TUPLES:
          
-         list_avg_error.append(np.mean(np.mean(np.abs(current_mag_coh - previous_mag_coh)))) 
-         if np.all(np.abs(current_mag_coh - previous_mag_coh) < EPS_TO_HALT_MAG_COH_COMP):
+        
+         
+         error_coh_approx = np.mean(np.abs(current_mag_coh - previous_mag_coh))
+         list_avg_error.append(error_coh_approx)
+
+         if len(list_avg_error) > N_POINTS_MAG_COH_CONV_HAT:
+          error_criterion = np.nanmean(list_avg_error)
+
+          print("i_tuple is " + str(i_tuple) + " avg error is " + str(error_criterion))
+          
+          if error_criterion < EPS_TO_HALT_MAG_COH_COMP or i_tuple > MAX_COH_CURVES:
             break
          
 
