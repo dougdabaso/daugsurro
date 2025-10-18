@@ -1,0 +1,8 @@
+{"AddNoise": {"scale": 0.02},
+ "Dropout": {"p": 0.1, "size": [1,5]},
+ "Drift": {"max_drift": 0.7, "n_drift_points": 5},
+ "Pool": {"size": 2},
+ "Convolve": {"window": "hann", "frac_size": 0.1},
+ "Quantize": {"n_levels": 20},
+ "TimeWarp": {"n_speed_change": 5, "max_speed_ratio": 3}
+ }
