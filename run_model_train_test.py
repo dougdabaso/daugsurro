@@ -528,6 +528,16 @@ def main(args):
 
 
         # Running training+validation and test steps 
+
+        SHUFFLE_BUFFER_SIZE = dict_train_test_db["shuffle_buffer_size"]
+        BATCH_SIZE = dict_train_test_db["batch_size"]
+
+        X_test = np.asarray(X_test).astype(np.float32).reshape(-1, 512, 1)
+        y_test = np.asarray(y_test).astype(np.float32).reshape(-1, 1)
+        y_test = keras.utils.to_categorical(y_test)
+        test_dataset = tf.data.Dataset.from_tensor_slices((X_test, y_test))
+        test_dataset = test_dataset.batch(BATCH_SIZE)
+
         for option_eval in OPTIONS_TO_EVALUATE:
 
             dict_model_results["history_"  + option_eval] = {}
@@ -551,18 +561,9 @@ def main(args):
                 y_train = np.asarray(y_train_to_employ).astype(np.float32).reshape(-1, 1)
                 y_train = keras.utils.to_categorical(y_train)
 
-                X_test = np.asarray(X_test).astype(np.float32).reshape(-1, 512, 1)
-                y_test = np.asarray(y_test).astype(np.float32).reshape(-1, 1)
-                y_test = keras.utils.to_categorical(y_test) 
-
-                SHUFFLE_BUFFER_SIZE = dict_train_test_db["shuffle_buffer_size"]
-                BATCH_SIZE = dict_train_test_db["batch_size"]
-
                 train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
-                test_dataset = tf.data.Dataset.from_tensor_slices((X_test, y_test))
-
                 train_dataset = train_dataset.shuffle(SHUFFLE_BUFFER_SIZE).batch(BATCH_SIZE)
-                test_dataset = test_dataset.batch(BATCH_SIZE) 
+                 
 
                 # Adding val split that is not in the Keras tutorial (in order to use
                 # the same criterion for all methods/use cases)
@@ -635,7 +636,7 @@ def main(args):
                 
                 
                 
-
+                breakpoint()
                 loss, accuracy, auc, precision, recall = loaded_model.evaluate(test_dataset)
 
                 dict_model_results["history_" + option_eval][f"trial_{i_trial}"] = loaded_model_history

@@ -52,6 +52,7 @@ N_POINTS_MAG_COH_CONV_HAT = int(dict_config["general_params"]["n_points_mag_coh_
 MAX_COH_CURVES = int(dict_config["general_params"]["max_coh_curves"])
 
 
+
 class SignalAugmenters:
   """
   Stores signal augmenter functions implementing different methods
@@ -136,6 +137,19 @@ class SignalAugmenters:
       self.y_train_keep = y_train[~mask_in] # these signals will not be augmented
       self.X_train_keep = X_train[~mask_in]
 
+      # Setting up aug mode ('all' or 'random_sample')
+      # Augment a random sample of the signals from the class 
+      # selected to augment
+
+      if aug_mode == 'random_sample':
+      
+        N_sigs_to_aug = int(frac_sigs_to_aug*np.shape(self.X_train_aug)[0])
+        sample_indices = np.random.choice(len(self.X_train_aug), size=N_sigs_to_aug, replace=False)
+
+        self.X_train_aug = self.X_train_aug[sample_indices]
+        self.y_train_aug = self.y_train_aug[sample_indices]
+
+
 
 
   def perform_augmentation(self,
@@ -209,27 +223,26 @@ class SignalAugmenters:
 
     # Performing some pre-calculations for the implemented
     # daug methods that require to do so  
+
+    # Pre-calculations of mod_surro method
     if aug_technique == "mod_surro":
        
       # Computing spectral coherence of signals to augment
 
-      available_classes = list(set(y_train))
+      available_classes = list(set(y_train_aug))
 
       dict_important_bands = {}
       for current_class in available_classes:
         
         # Create boolean mask to pick signals to augment
-        mask_in_current_class = list(set(y_train))
-
-        # Use the mask to split the arrays
-        y_train_aug_current_class = y_train_aug[mask_in_current_class] # these signals will be augmented
+        mask_in_current_class = np.isin(y_train_aug, current_class)
+        y_train_aug_current_class = y_train_aug[mask_in_current_class]
         X_train_aug_current_class = X_train_aug[mask_in_current_class]
 
-
-        mag_coherence_list, phase_coherence_list, freq_points, signal_matches_coherence, list_avg_error = computing_coherence(len(y_train_aug),
-                                                                                                                X_train_aug,
-                                                                                                                fs, 
-                                                                                                                frac_sig_pairs_comp_coh=frac_sig_pairs_comp_coh)
+        mag_coherence_list, _, freq_points, _, list_avg_error = computing_coherence(len(y_train_aug_current_class),
+                                                                                    X_train_aug_current_class,
+                                                                                    fs, 
+                                                                                    frac_sig_pairs_comp_coh=frac_sig_pairs_comp_coh)
       
         # Getting the freq indexes corresponding to the largest values
         # of mag spectral coherence, which are assumed to be the most
@@ -251,14 +264,14 @@ class SignalAugmenters:
       aug_method_metadata[aug_technique] = {"dict_important_bands": dict_important_bands}
       
 
-
+    # Pre-calculations of tsaug method
     elif aug_technique == "tsaug":
        
 
         # Instantiating tsaug augmenter
 
-        my_daug_std = np.nanstd(X_train)
-        signal_len = np.shape(X_train)[0]
+        my_daug_std = np.nanstd(X_train_aug)
+        signal_len = np.shape(X_train_aug)[0]
 
         if len(tsaug_config) > 0:
           tsaug_obj = TsaugAugmenter(my_daug_std, signal_len, tsaug_config)
@@ -266,205 +279,105 @@ class SignalAugmenters:
            raise ValueError("tsaug_config dictionary cannot be empty for augmentation technique 'tsaug'.")
         
         my_augmenter = tsaug_obj.create_aug_obj()
+        aug_method_metadata[aug_technique] = {"my_daug_std": my_daug_std,
+                                              "tsaug_obj_augmenter": tsaug_obj}
 
 
 
     # Performing data augmentation itself
+    N_sigs_to_aug = np.shape(X_train_aug)[0]
 
-    if aug_mode == "all":
+    # For mod_surr and tsaug, each signal will be augmented
+    # individually. For the seriesgan method, we will augment
+    # all signals belonging to each class chosen to be augmented 
 
-      # Augment all signals from the class selected to be augmented
+    if aug_technique == "seriesgan":
+        
+      available_classes_to_aug = list(set(y_train_aug))
 
-      N_sigs_to_aug = np.shape(X_train_aug)[0]
+      for i_class in range(len(available_classes_to_aug)):
+        
+        class_to_aug = available_classes_to_aug[i_class]
+        mask_aug_class = np.isin(y_train_aug, class_to_aug)
+        X_train_aug_current_class = X_train_aug[mask_aug_class]
+        y_train_aug_current_class = y_train_aug[mask_aug_class]
 
-      # For mod_surr and tsaug, each signal will be augmented
-      # individually. For the seriesgan method, we will augment
-      # all signals belonging to each class chosen to be augmented 
+        n_sigs_to_create = int(n_replicates*np.shape(X_train_aug_current_class)[0])
 
-      if aug_technique == "seriesgan":
-         
-        available_classes_to_aug = list(set(y_train_aug))
+        array_aug_label = np.tile(y_train_aug_current_class, n_replicates)
 
-        for i_class in range(len(available_classes_to_aug)):
-         
-          class_to_aug = available_classes_to_aug[i_class]
-          mask_aug_class = np.isin(y_train_aug, class_to_aug)
-          X_train_aug_current_class = X_train_aug[mask_aug_class]
-          y_train_aug_current_class = y_train_aug[mask_aug_class]
+        array_aug_data = seriesgan(X_train_aug_current_class.reshape(np.shape(X_train_aug_current_class)[0],
+                                                                      np.shape(X_train_aug_current_class)[1],
+                                                                      1), seriesgan_config, n_sigs_to_create)
+        print(np.shape(array_aug_data))
 
-          n_sigs_to_create = int(n_replicates*np.shape(X_train_aug_current_class)[0])
+        array_aug_data = array_aug_data.reshape(np.shape(array_aug_data)[0], np.shape(array_aug_data)[1])
 
-          array_aug_label = np.tile(y_train_aug_current_class, n_replicates)
+        if i_class == 0:
+          array_ens_aug_data = array_aug_data
+          array_ens_aug_label = array_aug_label
+        else:
+          array_ens_aug_data = np.concatenate([array_aug_data, array_ens_aug_data], axis=0)
+          array_ens_aug_label = np.concatenate([array_aug_label, array_ens_aug_label], axis=0)
 
-          print("====================================")
-          print(y_train_aug_current_class)
-          print(X_train_aug_current_class)
-          print("============================")
+    else: # methods where we augment each signal individually
 
-          print(np.shape(X_train_aug_current_class))
+      for i_sig in range(N_sigs_to_aug):
 
-          array_aug_data = seriesgan(X_train_aug_current_class.reshape(np.shape(X_train_aug_current_class)[0],
-                                                                       np.shape(X_train_aug_current_class)[1],
-                                                                       1), seriesgan_config, n_sigs_to_create)
-          print(np.shape(array_aug_data))
+        input_signal = X_train_aug[i_sig]
+        input_label = y_train_aug[i_sig]
 
-          array_aug_data = array_aug_data.reshape(np.shape(array_aug_data)[0], np.shape(array_aug_data)[1])
+        print(i_sig)
 
-          if i_class == 0:
+        if aug_technique == "mod_surro": 
+
+          array_aug_data = compute_mod_surro(input_signal, 
+                                             fs, 
+                                             dict_important_bands[input_label]["sorted_freq"],
+                                             frac_freq_shuffle, 
+                                             n_replicates)
+          
+
+          array_aug_label = input_label*np.ones(n_replicates)
+
+          print(str(i_sig) + " augmented.")
+
+          if i_sig == 0:
             array_ens_aug_data = array_aug_data
             array_ens_aug_label = array_aug_label
           else:
             array_ens_aug_data = np.concatenate([array_aug_data, array_ens_aug_data], axis=0)
             array_ens_aug_label = np.concatenate([array_aug_label, array_ens_aug_label], axis=0)
 
-      else: # methods where we augment each signal individually
 
-        for i_sig in range(N_sigs_to_aug):
-
-          input_signal = X_train_aug[i_sig]
-          input_label = y_train_aug[i_sig]
-
-          print(i_sig)
-
-          sorted_freq_current_class = dict_important_bands[current_class]["sorted_freq"]
+        elif aug_technique == "tsaug":
           
+          if i_sig == 0:
+            list_ens_aug_label = []
 
-          if aug_technique == "mod_surro":        
-            array_aug_data = compute_mod_surro(input_signal, fs, sorted_freq_current_class, frac_freq_shuffle, n_replicates)
-            array_aug_label = input_label*np.ones(n_replicates)
+          list_aug_label = []
+          for i_rep in range(n_replicates):
 
-          elif aug_technique == "tsaug":
+            aug_data = my_augmenter.augment(input_signal)
+            aug_data = aug_data.reshape(1,np.shape(aug_data)[0]) 
+            aug_label = input_label  
 
-            if i_sig == 0:
-                list_ens_aug_label = []
-                
-            list_aug_label = []
-            for i_rep in range(n_replicates):
-
-              aug_data = my_augmenter.augment(input_signal)
-              aug_data = aug_data.reshape(1,np.shape(aug_data)[0]) 
-              aug_label = input_label  
-
-              if i_rep == 0:
-                array_aug_data = aug_data
-              else:
-                array_aug_data = np.concatenate([array_aug_data, aug_data], axis=0)
-              list_aug_label.append(aug_label)
-
-            if i_sig == 0:
-              array_ens_aug_data = array_aug_data
+            if i_rep == 0:
+              array_aug_data = aug_data
             else:
-              array_ens_aug_data = np.concatenate([array_aug_data, array_ens_aug_data], axis=0)
-              
-            list_ens_aug_label += list_aug_label
-            array_ens_aug_label = np.array(list_ens_aug_label)
+              array_aug_data = np.concatenate([array_aug_data, aug_data], axis=0)
+            
+            list_aug_label.append(aug_label)
 
-        
-      
-    elif aug_mode == "random_sample":
-
-      # Augment a random sample of the signals from the class 
-      # selected to augment
-
-      N_sigs_to_aug = int(frac_sigs_to_aug*np.shape(X_train_aug)[0])
-
-      sample_indices = np.random.choice(len(X_train_aug), size=N_sigs_to_aug, replace=False)
-
-      input_signals = X_train_aug[sample_indices]
-      input_labels = y_train_aug[sample_indices]
-
-      # For mod_surr and tsaug, each signal will be augmented
-      # individually. For the seriesgan method, we will augment
-      # all signals belonging to each class chosen to be augmented 
-
-      if aug_technique == "seriesgan":
-         
-        available_classes_to_aug = list(set(input_labels))
-
-        for i_class in range(len(available_classes_to_aug)):
-         
-          class_to_aug = available_classes_to_aug[i_class]
-          mask_aug_class = np.isin(input_labels, class_to_aug)
-          input_signals_current_class = input_signals[mask_aug_class]
-          input_labels_current_class = input_labels[mask_aug_class]
-
-          n_sigs_to_create = n_replicates*np.shape(input_signals_current_class)[0]
-
-          array_aug_label = np.tile(input_labels_current_class, n_replicates)
-          array_aug_data = seriesgan(input_signals_current_class.reshape(np.shape(input_signals_current_class)[0],
-                                              np.shape(input_signals_current_class)[1],
-                                              1), seriesgan_config, n_sigs_to_create)
-
-          array_aug_data = array_aug_data.reshape(np.shape(array_aug_data)[0], np.shape(array_aug_data)[1])
-
-
-          if i_class == 0:
+          if i_sig == 0:
             array_ens_aug_data = array_aug_data
-            array_ens_aug_label = array_aug_label
           else:
             array_ens_aug_data = np.concatenate([array_aug_data, array_ens_aug_data], axis=0)
-            array_ens_aug_label = np.concatenate([array_aug_label, array_ens_aug_label], axis=0)
-
-      else: # methods where we augment each signal individually
-
-        
-        for i_sig in range(N_sigs_to_aug):
-
-            input_signal = input_signals[i_sig]
-            input_label = input_labels[i_sig]
-
-            print(i_sig)
-
-            if aug_technique == "mod_surro": 
-
-
-              sorted_freq_current_class = dict_important_bands[input_label]["sorted_freq"]
-
-              array_aug_data = compute_mod_surro(input_signal, fs, sorted_freq_current_class, frac_freq_shuffle, n_replicates)
-              array_aug_label = input_label*np.ones(n_replicates)
-
-              print(str(i_sig) + " augmented.")
-
-              if i_sig == 0:
-                array_ens_aug_data = array_aug_data
-                array_ens_aug_label = array_aug_label
-              else:
-                array_ens_aug_data = np.concatenate([array_aug_data, array_ens_aug_data], axis=0)
-                array_ens_aug_label = np.concatenate([array_aug_label, array_ens_aug_label], axis=0)
-
-
-            elif aug_technique == "tsaug":
-              
-              if i_sig == 0:
-                list_ens_aug_label = []
-
-              list_aug_label = []
-              for i_rep in range(n_replicates):
-
-                aug_data = my_augmenter.augment(input_signal)
-                aug_data = aug_data.reshape(1,np.shape(aug_data)[0]) 
-                aug_label = input_label  
-
-                if i_rep == 0:
-                  array_aug_data = aug_data
-                else:
-                  array_aug_data = np.concatenate([array_aug_data, aug_data], axis=0)
-                
-                list_aug_label.append(aug_label)
-
-              if i_sig == 0:
-                array_ens_aug_data = array_aug_data
-              else:
-                array_ens_aug_data = np.concatenate([array_aug_data, array_ens_aug_data], axis=0)
-              
-              list_ens_aug_label += list_aug_label
-              array_ens_aug_label = np.array(list_ens_aug_label)
           
-    else:
-        
-      raise ValueError("Aug mode not recognized (it should be 'all' or 'random_sample')")
+          list_ens_aug_label += list_aug_label
+          array_ens_aug_label = np.array(list_ens_aug_label)
+ 
 
-    
     # Combining back array_ens_aug_data and array_ens_aug_label to not augmented conterparts
     
                                    # part not sent to augmentation, part sent to augmentation, part augmented
@@ -649,7 +562,7 @@ def computing_coherence(number_of_coh_spec_to_compute, signals_to_augment, fs, f
       signal_matches_coherence = random.sample(signal_matches_coherence, N_comb_to_use)
       N_tuples_to_compute = len(signal_matches_coherence)
 
-    list_avg_error = []
+    list_avg_error, list_global_error = [], []
     for i_tuple in range(N_tuples_to_compute):
 
       matching_tuple = signal_matches_coherence[i_tuple]
@@ -682,15 +595,19 @@ def computing_coherence(number_of_coh_spec_to_compute, signals_to_augment, fs, f
 
       if i_tuple > MIN_NUM_TUPLES:
          
-        
-         
-         error_coh_approx = np.mean(np.abs(current_mag_coh - previous_mag_coh))
-         list_avg_error.append(error_coh_approx)
+         error_coh_approx = np.nanmean(np.abs(current_mag_coh - previous_mag_coh))
 
-         if len(list_avg_error) > N_POINTS_MAG_COH_CONV_HAT:
-          error_criterion = np.nanmean(list_avg_error)
+         # avg mean abs error for current combination of signals creating coh curve
+         list_avg_error.append(error_coh_approx) 
 
-          print("i_tuple is " + str(i_tuple) + " avg error is " + str(error_criterion))
+         # Mean avg. mean abs for all combinations
+         list_global_error.append(np.nanmean(list_avg_error)) 
+
+         if len(list_global_error) > N_POINTS_MAG_COH_CONV_HAT:
+          error_criterion = np.nanmean(np.diff(list_global_error[-N_POINTS_MAG_COH_CONV_HAT:]))
+
+          if i_tuple % 1000 == 0:
+            print("i_tuple is " + str(i_tuple) + "of a max of " + str(MAX_COH_CURVES) + "steps (but it can halt before that, if avg error converge), avg error is " + str(error_criterion))
           
           if error_criterion < EPS_TO_HALT_MAG_COH_COMP or i_tuple > MAX_COH_CURVES:
             break
