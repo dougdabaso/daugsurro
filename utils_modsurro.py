@@ -320,6 +320,32 @@ class SignalAugmenters:
           array_ens_aug_data = np.concatenate([array_aug_data, array_ens_aug_data], axis=0)
           array_ens_aug_label = np.concatenate([array_aug_label, array_ens_aug_label], axis=0)
 
+
+        filename_prov_seriesgan = "prov_seriesgan_" + str(i_class) + ".pkl"
+
+        dict_prov_seriesgan_data = {"array_ens_aug_data": array_ens_aug_data, 
+                                    "array_ens_aug_label": array_ens_aug_label}
+        
+        
+        try:
+          import pickle
+          with open(filename_prov_seriesgan, "wb") as f:  
+            pickle.dump(dict_prov_seriesgan_data, f, protocol=3)
+          
+          # Sending to drive right away
+          import shutil
+          DEST_DRIVE_FOLDER="/content/drive/MyDrive/daugsurro/"
+          SRC_COLAB_FILEPATH = filename_prov_seriesgan
+          shutil.copy(SRC_COLAB_FILEPATH, DEST_DRIVE_FOLDER)
+
+        except:
+          print("Copying to drive directly did not work out.")
+          print("The DEST_DRIVE_FOLDER variable was " + DEST_DRIVE_FOLDER)
+          print("The SRC_COLAB_FILEPATH variable was " + SRC_COLAB_FILEPATH)
+          print("The command used was shutil.copy(SRC_COLAB_FILEPATH, DEST_DRIVE_FOLDER)")
+        
+
+
     else: # methods where we augment each signal individually
 
       for i_sig in range(N_sigs_to_aug):
@@ -689,147 +715,4 @@ def compute_mod_surro(input_signal, fs, sorted_freq, frac_freq_shuffle, n_replic
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  
-  # def surro_signal_augmenter(self,
-  #                            frac_freq_shuffle=0.25, 
-  #                            frac_sig_pairs_comp_coh=0.10):
-    
-  #   """
-  #   Augments a set of input signals (training signals) given as
-  #   arrays using the modified surrogate method.
-    
-  #   Args:
-      
-
-    
-      
-    
-
-    
-  #   """
-
-  #   X_train = self.X_train
-  #   y_train = self.y_train
-  #   fs = self.fs
-  #   n_replicates = self.n_replicates
-  #   classes_to_augment = self.classes_to_augment
-  #   aug_mode = self.aug_mode
-  #   frac_sigs_to_aug = self.frac_sigs_to_aug
-  #   actual_classes_to_aug = self.actual_classes_to_aug
-  #   y_train_aug = self.y_train_aug
-  #   y_train_keep = self.y_train_keep
-  #   X_train_aug = self.X_train_aug
-  #   X_train_keep = self.X_train_keep
-   
-
-
-
-  #   # Computing spectral coherence of signals to augment
-  #   mag_coherence_list, phase_coherence_list, freq_points, signal_matches_coherence = computing_coherence(len(y_train_aug),
-  #                                                                                                               X_train_aug,
-  #                                                                                                               fs, 
-  #                                                                                                               frac_sig_pairs_comp_coh=frac_sig_pairs_comp_coh)
-      
-      
-  #   # Getting the freq indexes corresponding to the largest values
-  #   # of mag spectral coherence, which are assumed to be the most
-  #   # relevant frequencies of the augmented classes
-
-  #   sorted_indices = np.argsort(np.mean(mag_coherence_list,axis=0))[::-1]
-  #   freq_points = np.array(freq_points)
-  #   sorted_freq = freq_points[sorted_indices]
-
-
-  #   if aug_mode == "all":
-
-  #     # Augment all signals from the class selected to be augmented
-
-  #     N_sigs_to_aug = np.shape(X_train_aug)[0]
-
-  #     for i_sig in range(N_sigs_to_aug):
-
-  #         input_signal = X_train_aug[i_sig]
-  #         input_label = y_train_aug[i_sig]
-                                
-  #         array_surro = compute_mod_surro(input_signal, fs, sorted_freq, frac_freq_shuffle, n_replicates)
-  #         array_label = input_label*np.ones(n_replicates)
-
-  #         if i_sig == 0:
-  #             array_ens_surro = array_surro
-  #             array_ens_label = array_label
-  #         else:
-  #             array_ens_surro = np.concatenate([array_ens_surro, array_surro], axis=0)
-  #             array_ens_label = np.concatenate([array_ens_label, array_label], axis=0)
-
-
-  #   elif aug_mode == "random_sample":
-
-  #     # Augment a random sample of the signals from the class 
-  #     # selected to augment
-
-  #     N_sigs_to_aug = int(frac_sigs_to_aug*np.shape(X_train_aug)[0])
-
-  #     sample_indices = np.random.choice(len(X_train_aug), size=N_sigs_to_aug, replace=False)
-
-  #     input_signals = X_train_aug[sample_indices]
-  #     input_labels = y_train_aug[sample_indices]
-
-
-  #     for i_sig in range(N_sigs_to_aug):
-
-  #         input_signal = input_signals[i_sig]
-  #         input_label = input_labels[i_sig]
-                        
-  #         array_surro = compute_mod_surro(input_signal, fs, sorted_freq, frac_freq_shuffle, n_replicates)
-  #         array_label = input_label*np.ones(n_replicates)
-
-  #         if i_sig == 0:
-  #             array_ens_surro = array_surro
-  #             array_ens_label = array_label
-  #         else:
-  #             array_ens_surro = np.concatenate([array_ens_surro, array_surro], axis=0)
-  #             array_ens_label = np.concatenate([array_ens_label, array_label], axis=0)
-
-  #   else:
-        
-  #     raise ValueError("Aug mode not recognized (it should be 'all' or 'random_sample')")
-    
-
-  #   # Combining back array_ens_surro and array_ens_label to not augmented conterparts
-    
-  #                                   # part not sent to augmentation, part sent to augmentation, part augmented
-  #   X_train_final = np.concatenate([X_train_keep, X_train_aug, array_ens_surro], axis=0)
-  #   y_train_final = np.concatenate([y_train_keep, y_train_aug, array_ens_label], axis=0)
-
-
-  #   dict_output = {"X_train": X_train,
-  #                 "y_train": y_train,
-  #                 "X_train_final": X_train_final,
-  #                 "y_train_final": y_train_final,
-  #                 "X_train_keep": X_train_keep,
-  #                 "y_train_keep": y_train_keep,
-  #                 "array_ens_label": array_ens_label,
-  #                 "array_ens_data": array_ens_surro}  
-    
-
-    
-    
-  #   return dict_output
 

@@ -451,16 +451,19 @@ def seriesgan (ori_data, parameters, num_samples):
       _, step_d_ae_loss = sess.run([D_ae_solver_second, D_ae_loss_second], feed_dict={X: X_mb, T: T_mb, Z: Z_mb})
         
     # Print multiple checkpoints
-    if itt % 1000 == 0 or itt==iterations-1:
-      print('step: '+ str(itt) + '/' + str(iterations) + 
-            ', D_loss: ' + str(np.round(step_d_loss,4)) + 
-            ', G_loss: ' + str(np.round(step_g_loss,4)) + 
-            ', G_loss_u: ' + str(np.round(step_g_loss_u,4)) + 
-            ', G_loss_s: ' + str(np.round(step_g_loss_s,4)) + 
-            ', G_loss_ts: ' + str(np.round(step_g_loss_ts_structure,4)) + 
-            ', AE_loss: ' + str(np.round(step_e_loss_t0,4)) +
-            ', AE_D_loss: ' + str(np.round(step_d_ae_loss,4))
-           )  
+    try:
+      if itt % 50 == 0 or itt==iterations-1:
+        print('step: '+ str(itt) + '/' + str(iterations) + 
+              ', D_loss: ' + str(np.round(step_d_loss,4)) + 
+              ', G_loss: ' + str(np.round(step_g_loss,4)) + 
+              ', G_loss_u: ' + str(np.round(step_g_loss_u,4)) + 
+              ', G_loss_s: ' + str(np.round(step_g_loss_s,4)) + 
+              ', G_loss_ts: ' + str(np.round(step_g_loss_ts_structure,4)) + 
+              ', AE_loss: ' + str(np.round(step_e_loss_t0,4)) +
+              ', AE_D_loss: ' + str(np.round(step_d_ae_loss,4))
+            )  
+    except:
+       print("Could not print the results for iteration " + str(itt))
     
     if (itt >= int(iterations*0.5)) and (itt % 500 == 0 or itt==iterations-1):
         
