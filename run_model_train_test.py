@@ -526,6 +526,10 @@ def main(args):
         # Importing model architecture
         from model_setups import keras_eeg_model as chosen_model
 
+        # Making sure we are in eager mode!
+        tf.config.run_functions_eagerly(True)
+        tf.compat.v1.enable_eager_execution()
+        print("Eager mode:", tf.executing_eagerly())
 
         # Running training+validation and test steps 
 
@@ -563,12 +567,19 @@ def main(args):
 
                 train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
                 train_dataset = train_dataset.shuffle(SHUFFLE_BUFFER_SIZE).batch(BATCH_SIZE)
-                 
+             
+                breakpoint()
+                print("Eager mode:", tf.executing_eagerly())
 
                 # Adding val split that is not in the Keras tutorial (in order to use
                 # the same criterion for all methods/use cases)
                 # Assume tf_train_dataset is already batched
-                total_batches = len(train_dataset)
+
+                try:
+                    total_batches = len(train_dataset)
+                except:
+                    total_batches = BATCH_SIZE
+
                 val_size = int(float(dict_train_test_db["val_ratio"]) * total_batches)
 
                 val_dataset = train_dataset.take(val_size)
@@ -599,8 +610,14 @@ def main(args):
                             7: 0.9443439823186659} 
 
                 loaded_model = chosen_model(num_classes=num_classes) 
+                print("Eager mode:", tf.executing_eagerly())
 
-                print(loaded_model.summary())
+                breakpoint()
+                
+                try:
+                    print(loaded_model.summary())
+                except:
+                    print(loaded_model)
 
                 epochs = 30 # as defined in the Keras website
 
@@ -628,6 +645,8 @@ def main(args):
                                    keras.metrics.Precision(),
                                    keras.metrics.Recall()])
 
+                
+                
                 loaded_model_history = loaded_model.fit(train_dataset,
                                                         epochs=epochs,
                                                         callbacks=callbacks,
@@ -636,7 +655,7 @@ def main(args):
                 
                 
                 
-                breakpoint()
+                #breakpoint()
                 loss, accuracy, auc, precision, recall = loaded_model.evaluate(test_dataset)
 
                 dict_model_results["history_" + option_eval][f"trial_{i_trial}"] = loaded_model_history
@@ -674,6 +693,6 @@ if __name__ == "__main__":
         pickle.dump(dict_model_results, f, protocol=3)
 
 
-
-    print(dict_model_results)
+    breakpoint()
+    #print(dict_model_results)
 
