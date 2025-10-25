@@ -9,7 +9,6 @@ cffi==2.0.0
 cycler==0.12.1
 debugpy==1.8.16
 decorator==5.2.1
-dm-tree==0.1.9
 easydict==1.10
 executing==2.2.1
 idna==3.10
