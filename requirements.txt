@@ -51,8 +51,8 @@ pytest==7.4.4
 python-dateutil==2.9.0.post0
 pyzmq==27.1.0
 rsa==4.9.1
-scikit-image==0.25.2
-scikit-learn==1.7.2
+scikit-image
+scikit-learn
 scipy==1.11.4
 six==1.17.0
 soundfile==0.13.1
