@@ -247,7 +247,7 @@ if __name__ == "__main__":
         plt.legend(loc="upper right")
         plt.savefig(os.path.join(MAIN_FOLDER, FOLDER_OUTPUT, FOLDER_PLOTS, current_simulation_id, "plot" + "_" + current_simulation_id + "_" + "class_" + str(int(my_class)) + ".pdf")
 )   
-        # plt.close()
+        plt.close()
 
         
     print(dict_output)

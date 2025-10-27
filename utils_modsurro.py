@@ -677,8 +677,8 @@ def compute_mod_surro(input_signal, fs, sorted_freq, frac_freq_shuffle, n_replic
     
     """
 
-    
-    current_fft = np.fft.fft(input_signal)
+    current_dc = np.namnean(input_signal)
+    current_fft = np.fft.fft(input_signal - current_dc)
     current_freq_points = np.fft.fftfreq(len(input_signal), d=1./fs)
     current_freq_points = current_freq_points[current_freq_points >= 0]
     current_freq_idx = np.where(current_freq_points >= 0)
@@ -701,6 +701,8 @@ def compute_mod_surro(input_signal, fs, sorted_freq, frac_freq_shuffle, n_replic
 
         # current_phase = np.random.rand(len(current_phase))*2*np.pi
         modified_surro = np.real(np.fft.ifft(2*current_mag*np.exp((1j)*current_phase)))
+
+        modified_surro += current_dc
 
         list_surrogates.append(modified_surro)
         

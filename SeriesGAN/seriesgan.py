@@ -376,9 +376,15 @@ def seriesgan (ori_data, parameters, num_samples):
         # Checkpoint
 
     if itt % 500 == 0 or itt==int(iterations*0.5)-1:
+
+
+      print("I am in breakpoint 1")
+      breakpoint()
       print('step: '+ str(itt*2) + '/' + str(iterations) + ', AE_loss: ' + str(np.round(step_e_loss,4))) 
       
   print('Finish Autoencoder Training for Loss')
+
+  breakpoint()
     
     
   # 2. Embedding network training
@@ -402,6 +408,8 @@ def seriesgan (ori_data, parameters, num_samples):
            + ', AE_D_loss: ' + str(np.round(step_d_ae_loss,4))) 
       
   print('Finish Embedding Network Training')
+
+  breakpoint()
     
   # 3. Training only with supervised loss
   print('Start Training with Supervised Loss Only')
@@ -418,6 +426,8 @@ def seriesgan (ori_data, parameters, num_samples):
       print('step: '+ str(itt)  + '/' + str(iterations) +', S_loss: ' + str(np.round(step_g_loss_s,4)) )
       
   print('Finish Training with Supervised Loss Only')
+
+  breakpoint()
 
 
   print('Start Joint Training')
@@ -452,7 +462,7 @@ def seriesgan (ori_data, parameters, num_samples):
         
     # Print multiple checkpoints
     try:
-      if itt % 50 == 0 or itt==iterations-1:
+      if itt % 5 == 0 or itt==iterations-1:
         print('step: '+ str(itt) + '/' + str(iterations) + 
               ', D_loss: ' + str(np.round(step_d_loss,4)) + 
               ', G_loss: ' + str(np.round(step_g_loss,4)) + 
@@ -496,6 +506,8 @@ def seriesgan (ori_data, parameters, num_samples):
             final_generated = generated_data
         
   print('Finish Joint Training')
+
+  breakpoint()
 
   #-------------------------------------------------------------------
     
